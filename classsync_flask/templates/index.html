@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="csrf-token" content="{{ csrf_token }}" />
+    <title>ClassSync M3 — Timetable Clash Resolver</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Lora:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="container topbar-inner">
+        <div class="brand">
+          <span class="brand-icon" aria-hidden="true">📅</span>
+          <span class="brand-title">ClassSync M3</span>
+        </div>
+        <div id="topbar-user" class="topbar-user hidden">
+          <span id="user-summary" class="user-summary"></span>
+          <button id="logout-btn" type="button" class="btn-secondary">Sign Out</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="container main-content">
+      <!-- Simple & User-Friendly Sign-In / First-Run Admin Setup -->
+      <section id="auth-section" class="auth-wrapper">
+        <div class="auth-intro">
+          <div class="hero-badge">📅</div>
+          <h1>Welcome to ClassSync</h1>
+          <p>
+            Your academic sanctuary for conflict-free schedules, room allocation, and seamless timetables.
+          </p>
+        </div>
+
+        <div class="card auth-card">
+          <div id="admin-setup-banner" class="notice-banner hidden">
+            First-time setup: create your Administrator account to unlock faculty and student onboarding.
+          </div>
+
+          <form id="admin-setup-form" class="form-stack hidden">
+            <h2>Create Administrator Account</h2>
+            <label>
+              Username
+              <input id="setup-username" type="text" required placeholder="e.g. admin01" />
+            </label>
+            <label>
+              Full Name
+              <input id="setup-fullname" type="text" required placeholder="e.g. Dr. Eleanor Vance" />
+            </label>
+            <label>
+              Email
+              <input id="setup-email" type="email" required placeholder="admin@lpu.in" />
+            </label>
+            <label>
+              Password
+              <input id="setup-password" type="password" required placeholder="At least 8 chars with letters & digits" />
+            </label>
+            <p id="setup-error" class="error-text hidden"></p>
+            <button type="submit" class="btn-primary">Create Administrator Account</button>
+          </form>
+
+          <form id="login-form" class="form-stack">
+            <h2>Sign In</h2>
+            <p class="muted-text">Sign in with your university username or email and password.</p>
+            <label>
+              Username or Email
+              <input id="login-identifier" type="text" required placeholder="e.g. prof.vance or student@lpu.in" />
+            </label>
+            <label>
+              Password
+              <input id="login-password" type="password" required placeholder="Enter your password" />
+            </label>
+            <p id="login-error" class="error-text hidden"></p>
+            <p id="login-success" class="success-text hidden"></p>
+            <button type="submit" class="btn-primary">Continue to Timetable</button>
+          </form>
+        </div>
+      </section>
+
+      <!-- Authenticated Workspace -->
+      <section id="app-section" class="app-section hidden">
+        <div class="section-header">
+          <div>
+            <p id="role-subtitle" class="kicker"></p>
+            <h1 id="welcome-heading">Welcome back!</h1>
+          </div>
+          <div class="day-tabs" id="day-tabs">
+            <button type="button" data-day="Mon" class="day-btn active">Mon</button>
+            <button type="button" data-day="Tue" class="day-btn">Tue</button>
+            <button type="button" data-day="Wed" class="day-btn">Wed</button>
+            <button type="button" data-day="Thu" class="day-btn">Thu</button>
+            <button type="button" data-day="Fri" class="day-btn">Fri</button>
+            <button type="button" data-day="Sat" class="day-btn">Sat</button>
+          </div>
+        </div>
+
+        <div class="workspace-grid">
+          <div class="primary-col">
+            <div class="card">
+              <div class="card-header">
+                <h2>Weekly Timetable</h2>
+                <span id="lunch-label" class="muted-text">Mon–Fri: 04:30 PM – 06:00 PM · Sat: 5 Slots</span>
+              </div>
+              <div id="timetable-list" class="period-list"></div>
+            </div>
+
+            <div id="conflicts-card" class="card hidden">
+              <div class="card-header">
+                <h2>Schedule Resolution Summary</h2>
+                <span id="generation-stats" class="muted-text"></span>
+              </div>
+              <div id="unscheduled-list" class="period-list"></div>
+              <p id="algorithm-note" class="muted-text small-note"></p>
+            </div>
+          </div>
+
+          <aside class="side-col">
+            <!-- Admin / Faculty Timetable Controls -->
+            <div id="generator-panel" class="card hidden">
+              <h2>M3 Clash Resolver</h2>
+              <p class="muted-text">
+                Generate a conflict-free timetable preserving lunch breaks and capping consecutive lectures at 3.
+              </p>
+              <div class="btn-stack">
+                <button id="generate-db-btn" type="button" class="btn-primary">
+                  Generate Department Timetable
+                </button>
+                <button id="generate-bench-btn" type="button" class="btn-secondary">
+                  Run 1,500 Students / 120 Sections Test
+                </button>
+              </div>
+              <p id="generator-status" class="muted-text"></p>
+            </div>
+
+            <!-- Simple Faculty Subject Assignment -->
+            <div id="faculty-assign-panel" class="card hidden">
+              <h2>Schedule a Subject</h2>
+              <form id="faculty-assign-form" class="form-stack">
+                <label>
+                  Subject Code
+                  <input id="assign-code" type="text" required placeholder="e.g. CSE310" />
+                </label>
+                <label>
+                  Subject Title
+                  <input id="assign-title" type="text" required placeholder="e.g. Compiler Design" />
+                </label>
+                <div class="two-col">
+                  <label>
+                    Section
+                    <input id="assign-section" type="text" value="CSE-4B" required />
+                  </label>
+                  <label>
+                    Room
+                    <input id="assign-room" type="text" value="LH-101" required />
+                  </label>
+                </div>
+                <div class="two-col">
+                  <label>
+                    Day
+                    <select id="assign-day">
+                      <option value="Mon">Mon</option>
+                      <option value="Tue">Tue</option>
+                      <option value="Wed">Wed</option>
+                      <option value="Thu">Thu</option>
+                      <option value="Fri">Fri</option>
+                      <option value="Sat">Sat</option>
+                    </select>
+                  </label>
+                  <label>
+                    Time Slot
+                    <select id="assign-slot">
+                      <option value="5">04:30 PM - 06:00 PM (Mon–Fri)</option>
+                      <option value="0">09:00 AM - 10:30 AM (Sat)</option>
+                      <option value="1">10:45 AM - 12:00 PM (Sat)</option>
+                      <option value="2">12:30 PM - 02:00 PM (Sat)</option>
+                      <option value="3">02:50 PM - 03:40 PM (Sat)</option>
+                      <option value="4">04:00 PM - 04:50 PM (Sat)</option>
+                    </select>
+                  </label>
+                </div>
+                <p id="assign-feedback" class="muted-text"></p>
+                <button type="submit" class="btn-primary">Assign Slot</button>
+              </form>
+            </div>
+
+            <!-- Admin User & CSV/JSON Import -->
+            <div id="admin-panel" class="card hidden">
+              <h2>Import Timetable Data</h2>
+              <form id="upload-form" class="form-stack">
+                <label>
+                  Upload CSV or JSON (Rooms / Courses / Sections)
+                  <input id="upload-file" type="file" accept=".csv,.json" required />
+                </label>
+                <p id="upload-feedback" class="muted-text"></p>
+                <button type="submit" class="btn-secondary">Upload &amp; Import</button>
+              </form>
+
+              <hr class="divider" />
+
+              <h2>Create Faculty or Student Account</h2>
+              <form id="create-user-form" class="form-stack">
+                <label>
+                  Role
+                  <select id="new-role">
+                    <option value="faculty">Faculty</option>
+                    <option value="student">Student</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </label>
+                <label>
+                  Username
+                  <input id="new-username" type="text" required placeholder="e.g. prof.vance" />
+                </label>
+                <label>
+                  Full Name
+                  <input id="new-fullname" type="text" required placeholder="e.g. Evelyn Vance" />
+                </label>
+                <label>
+                  Email
+                  <input id="new-email" type="email" required placeholder="e.vance@lpu.in" />
+                </label>
+                <label>
+                  Department / Section
+                  <input id="new-dept" type="text" placeholder="BTech CSE department or CSE-4B" />
+                </label>
+                <label>
+                  Temporary Password
+                  <input id="new-password" type="password" required placeholder="Min 8 chars, letters & digits" />
+                </label>
+                <p id="create-user-feedback" class="muted-text"></p>
+                <button type="submit" class="btn-primary">Create Account</button>
+              </form>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+  </body>
+</html>

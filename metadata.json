@@ -1,0 +1,8 @@
+{
+  "name": "Remix Remix ChronoPlan",
+  "description": "Intelligent academic scheduling, student timetable management, and instructor smart room reservation portal.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
